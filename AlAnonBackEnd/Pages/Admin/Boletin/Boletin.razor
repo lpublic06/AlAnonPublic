@@ -1,0 +1,116 @@
+﻿@page "/Boletin"
+@inject IBoletinRepository _boletinRepository
+@inject IJSRuntime _jsRuntime
+
+@attribute [Authorize(Roles = "Admin")]
+
+<h4 class="card-title text-primary">Manejar Boletin</h4>
+
+@if (isLoading)
+{
+	//Loading Symbol
+	<div class="text-center pt-4">
+		<img src="/images/loading.gif">
+	</div>
+}
+else{
+<EditForm Model="BoletinDto" OnValidSubmit="CambiarBoletin">
+<div class="container-fluid pb-8">
+	<div class="row">
+		<div class="col-md-6" style="width:50%; height:850px ;border:1px solid black">
+			<p style="overflow-wrap:anywhere">
+				@((MarkupString)BoletinDto.Pagina1)
+			</p>
+		</div>
+		<div class="col-md-6" style="width:50%;">
+			<SfRichTextEditor Height="850px" @bind-Value="BoletinDto.Pagina1">
+				<RichTextEditorToolbarSettings Items="@Tools" />
+			</SfRichTextEditor>
+		</div>
+	</div>
+</div>
+<div class="container-fluid">
+	<div class="row">
+		<div class="col-md-6" style="width:50%; height:850px ;border:1px solid black">
+			<p>
+				@((MarkupString)BoletinDto.Pagina2)
+			</p>
+		</div>
+		<div class="col-md-6" style="width:50%;">
+			<SfRichTextEditor Height="850px" @bind-Value="BoletinDto.Pagina2">
+				<RichTextEditorToolbarSettings Items="@Tools" />
+			</SfRichTextEditor>
+		</div>
+	</div>
+</div>
+<MudButton Variant="Variant.Filled" OnClick="(() => CambiarBoletin())" StartIcon="@Icons.Material.Filled.Save" IconColor="Color.Secondary" Size="Size.Large">Grabar</MudButton>
+</EditForm>
+}
+@code {
+	private bool isLoading { get; set; } = false;
+	private BoletinDto BoletinDto { get; set; } = new();
+	private DateTime DiaGrabada { get; set; } = new();
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		//Only load the categories the first time the page is rendered
+		if (firstRender)
+		{
+			await ObtenerBoletin();
+		}
+	}
+
+	private async Task ObtenerBoletin()
+	{
+		isLoading = true;
+		StateHasChanged();
+		var result = await _boletinRepository.ObtenerBoletin();
+		if (result != null && result.Exito)
+		{
+			BoletinDto = result.Data;
+			DiaGrabada = BoletinDto.DiaDeBoletin;
+		}
+		isLoading = false;
+		StateHasChanged();
+	}
+
+	private async Task CambiarBoletin()
+	{
+
+		if (BoletinDto.DiaDeBoletin != DiaGrabada)
+		{
+			BoletinDto.Id = 0;
+		}
+
+		var resultado = await _boletinRepository.CrearEditarBoletin(BoletinDto);
+        if (resultado != null && resultado.Exito)
+        {
+            await _jsRuntime.ToastrSuccess("Boletin Grabado Exitosamente.");
+        }
+        else
+        {
+            await _jsRuntime.ToastrError("Boletin No Se Pudo Grabar.");
+        }
+        await ObtenerBoletin();
+    }
+
+	private List<ToolbarItemModel>
+	Tools = new List<ToolbarItemModel>
+		()
+											{
+							new ToolbarItemModel() { Command = ToolbarCommand.Bold },
+							new ToolbarItemModel() { Command = ToolbarCommand.Italic },
+							new ToolbarItemModel() { Command = ToolbarCommand.Underline },
+							new ToolbarItemModel() { Command = ToolbarCommand.StrikeThrough },
+							new ToolbarItemModel() { Command = ToolbarCommand.FontName },
+							new ToolbarItemModel() { Command = ToolbarCommand.FontSize },
+							new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+							new ToolbarItemModel() { Command = ToolbarCommand.FontColor },
+							new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+							new ToolbarItemModel() { Command = ToolbarCommand.Formats },
+							new ToolbarItemModel() { Command = ToolbarCommand.Alignments },
+							new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+							new ToolbarItemModel() { Command = ToolbarCommand.Undo },
+							new ToolbarItemModel() { Command = ToolbarCommand.Redo }
+	};
+}

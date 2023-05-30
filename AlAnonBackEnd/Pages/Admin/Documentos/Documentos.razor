@@ -1,0 +1,119 @@
+﻿@page "/documentos"
+@inject IDocumentoRepository _documentoRepository
+@inject IJSRuntime _jsRuntime
+@inject IFileService _fileUpload
+@attribute [Authorize(Roles = "Admin")]
+
+<_DeleteConfirmation isParentComponentProcessing="isLoading" DeleteFunc="DeleteConfirmed"></_DeleteConfirmation>
+<h4 class="card-title text-primary">Manejar Documentos</h4>
+@if (isLoading)
+{
+    //Loading Symbol
+    <div class="text-center pt-4">
+        <img src="/images/loading.gif">
+    </div>
+}
+else
+{
+    @if (documentos.Count() > 0)
+    {
+        <ul>
+            <label for="picture">Documentos Grabados:    </label>
+            <br />
+            <br />
+            @foreach (var documento in documentos)
+            {
+                <li>
+                    <a class="pb-2" href="@documento.DocumentPath" target="_blank">@documento.Nombre    </a>
+                    <button class="btn-md btn-danger px-4" @onclick="()=>HandleDelete(documento)">Borrar</button>
+                    @*<button @onclick="() => RemoveDocument(documento)">Eliminar</button>*@
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No hay documentos cargados.</p>
+    }
+}
+<br />
+<div class="form-group pt-4">
+    <label for="picture">Documento Nuevo:    </label>
+    <br />
+    <InputFile @key=@(inputFileId) disabled="@DisabledUpload" OnChange="HandleImageUpload"></InputFile>
+</div>
+@*<input type="file" @onchange="HandleImageUpload" />*@
+
+@code {
+    private IEnumerable<DocumentoDto> documentos { get; set; } = new List<DocumentoDto>();
+    private bool isLoading { get; set; } = true;
+    public Guid inputFileId = Guid.NewGuid();
+    public bool DisabledUpload = false;
+    private int savedId;
+    private string savedUri;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        //Only load the local time the first time the page is rendered
+        if (firstRender)
+        {
+            await ObtenerDocumentos();
+        }
+
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        IBrowserFile file = e.File;
+
+        if (file != null)
+        {
+            var DocumentoNuevo = new DocumentoDto
+                {
+                    Nombre = file.Name,
+                    ContentType = file.ContentType
+                };
+            DisabledUpload = true;
+            DocumentoNuevo.DocumentPath = await _fileUpload.UploadFile(file, DocumentoNuevo.Nombre);
+            await _documentoRepository.CrearDocumento(DocumentoNuevo);
+            inputFileId = Guid.NewGuid();
+            DisabledUpload = false;
+            await _jsRuntime.ToastrSuccess("Documento Agregado Exitosamente.");
+            await ObtenerDocumentos();
+        }
+    }
+
+    private async Task HandleDelete(DocumentoDto doc)
+    {
+        savedId = doc.Id;
+        savedUri = doc.DocumentPath;
+        await _jsRuntime.InvokeVoidAsync("ShowDeleteConfirmation");
+    }
+
+    public async Task DeleteConfirmed(bool confirmed)
+    {
+        isLoading = true;
+        if (confirmed && savedId != 0)
+        {
+            await _documentoRepository.BorrarDocumento(savedId);
+            await _fileUpload.DeleteFile(savedUri);
+            await _jsRuntime.ToastrSuccess("Documento Borrado Exitosamente.");
+            await ObtenerDocumentos();
+            await _jsRuntime.InvokeVoidAsync("HideDeleteConfirmation");
+        }
+        isLoading = false;
+    }
+
+    private async Task ObtenerDocumentos()
+    {
+        isLoading = true;
+        StateHasChanged();
+        var result = await _documentoRepository.ObtenerDocumentos();
+        if (result != null && result.Exito)
+        {
+            documentos = result.Data;
+        }
+        isLoading = false;
+        StateHasChanged();
+    }
+}

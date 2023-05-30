@@ -1,0 +1,89 @@
+﻿@page "/publico/invitaciones"
+
+@using System.Globalization
+@inject IInvitacionRepository _invitacionRepository
+@inject IJSRuntime _jsRuntime
+
+<h4 class="card-title text-primary">Invitaciones</h4>
+@if (isLoading)
+{
+    //Loading Symbol
+    <div class="text-center pt-4">
+        <img src="/images/loading.gif">
+    </div>
+}
+else
+{
+    <div class="row">
+        @if (ListaDeInvitaciones.Count() > 0)
+        {
+            <div class="row">
+                @foreach (var Year in ListaDeInvitaciones.Select(x => x.FechaEntera.Value.Year).Distinct())
+                {
+                    <h6 class="font-weight-bold text-decoration-underline">Año: @Year</h6>
+                    @foreach (var Month in ListaDeInvitaciones.Where(x => x.FechaEntera.Value.Year == Year).Select(x => x.FechaEntera.Value.Month).Distinct())
+                    {
+                        <p class="text-decoration-underline">@culture.DateTimeFormat.GetMonthName(Month)</p>
+                        @foreach (var invitacion in ListaDeInvitaciones.Where(x => x.FechaEntera.Value.Year == Year && x.FechaEntera.Value.Month == Month))
+                        {
+                            <div class="col-lg-4 col-md-6 col-sm-12">
+                                <div class="row">
+                                    <div class="text-center">
+                                        <div class="col">
+                                            Fecha Del Evento: @invitacion.Fecha.Split(' ').First()
+                                        </div>
+                                        <div class="col">
+                                            <a data-src="@invitacion.ImagePath" data-fancybox="@($"{Month}{Year}")">
+                                                <img src="@invitacion.ImagePath" alt="@invitacion.Alt" class="text-center" style="max-width: 100%; max-height: 600px;">
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                }
+            </div>
+        }
+        else
+        {
+            <p>No hay Invitaciones.</p>
+        }
+    </div>
+}
+
+@code {
+    private bool isLoading { get; set; } = true;
+    private List<InvitacionDto> ListaDeInvitaciones { get; set; } = new List<InvitacionDto>();
+    DateTimeOffset localTime;
+    public String monthInSpanish = String.Empty;
+    public CultureInfo culture = new CultureInfo("es-ES");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        //Only load the local time the first time the page is rendered
+        if (firstRender)
+        {
+            // Get the timezone offset in minutes using JavaScript
+            int timezoneOffsetInMinutes = await _jsRuntime.InvokeAsync<int>("blazorGetTimezoneOffset");
+            // Create a DateTimeOffset object based on the local timezone offset
+            localTime = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromMinutes(timezoneOffsetInMinutes));
+            await ObtenerInvitacionesActuales(localTime.LocalDateTime);
+        }
+
+    }
+
+    private async Task ObtenerInvitacionesActuales(DateTime today)
+    {
+
+        isLoading = true;
+        StateHasChanged();
+        var result = await _invitacionRepository.ObtenerInvitacionesActuales(today);
+        if (result != null && result.Exito)
+        {
+            ListaDeInvitaciones = result.Data;
+        }
+        isLoading = false;
+        StateHasChanged();
+    }
+}

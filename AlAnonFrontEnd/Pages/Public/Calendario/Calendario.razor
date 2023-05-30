@@ -1,0 +1,120 @@
+﻿@page "/publico/calendario"
+@using System.Globalization
+@inject ICalendarioService _calendarioService
+@inject IJSRuntime _jsRuntime
+@*@attribute [Authorize(Roles = "Admin")]*@
+
+<PageTitle>Calendario de Eventos de Al-Anon en El Paso Texas y Sur de Nuevo Mexico</PageTitle>
+<h3>Calendario de Eventos</h3>
+@if (isProcessing)
+{
+	//Loading Symbol
+	<div class="text-center pt-4">
+		<img src="/Images/loading.gif" alt="Simbolo de espera para la pagina de eventos de Al-Anon en El Paso Texas y Sur De Nuevo Mexico" >
+	</div>
+}
+else
+{
+	<MudSwitch Class="d-flex justify-content-end" Checked="_isPastMode" T="bool" CheckedChanged="@(() => PastCurrentMode())" Color="Color.Primary">Eventos Pasados</MudSwitch>
+	<MudDataGrid T="CalendarioEventoDto" ReadOnly="true" Items="@CalendarioEventos"
+			 ColumnResizeMode="@ResizeMode.Column" SortMode="@SortMode.Single"
+			 Bordered="true" Dense="true" Striped="true" Outlined="true"
+			 QuickFilter="@_quickFilter"
+			 RowStyleFunc="@_rowStyleFunc" Style="border:1px solid black">
+		<ToolBarContent>
+			<MudTextField @bind-Value="_searchString" Placeholder="Buscar" Adornment="Adornment.Start" Immediate="true"
+					  AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+		</ToolBarContent>
+		<Columns  >
+			<Column T="CalendarioEventoDto" Field="FechaEntera" Title="Fecha" >
+				<CellTemplate>
+					@DateTime.ParseExact(@context.Item.FechaEntera.Value.ToString("dddd, MMMM dd yyyy"), "dddd, MMMM dd yyyy", new CultureInfo("en-US")).ToString("dddd, MMMM dd yyyy", new CultureInfo("es-ES"))
+				</CellTemplate>
+			</Column>
+			<Column T="CalendarioEventoDto" Field="Hora" />
+			<Column T="CalendarioEventoDto" Field="Evento" CellStyleFunc="@_cellStyleFunc" />
+			<Column T="CalendarioEventoDto" Field="Lugar" />
+		</Columns>
+	</MudDataGrid>
+
+}
+@code {
+	private IEnumerable<CalendarioEventoDto> CalendarioEventos = new List<CalendarioEventoDto>();
+	private bool isProcessing  { get; set; } = true;
+	private string _searchString;
+	private bool _isPastMode { get; set; } = false;
+
+	protected override async Task OnInitializedAsync()
+	{
+		//Only load the categories the first time the page is rendered
+		await ObtenerCalendarioAsync();
+	}
+
+	private async Task ObtenerCalendarioAsync()
+	{
+		isProcessing = true;
+		if (!_isPastMode)
+		{
+			var resultActual = await _calendarioService.ObtenerActuales();
+			if (resultActual != null && resultActual.Exito)
+			{
+				CalendarioEventos = resultActual.Data;
+			}
+		}
+		else
+		{
+			var resultPasado = await _calendarioService.ObtenerPasados();
+			if (resultPasado != null && resultPasado.Exito)
+			{
+				CalendarioEventos = resultPasado.Data;
+			}
+		}
+		isProcessing = false;
+	}
+
+	private async Task PastCurrentMode()
+	{
+		_isPastMode = !_isPastMode;
+		await ObtenerCalendarioAsync();
+	}
+
+	// quick filter - filter gobally across multiple columns with the same input
+	private Func<CalendarioEventoDto, bool> _quickFilter => x =>
+	{
+		var FechaEspanol = DateTime.ParseExact(x.FechaEntera.Value.ToString("dddd, MMMM dd yyyy"), "dddd, MMMM dd yyyy", new CultureInfo("en-US")).ToString("dddd, MMMM dd yyyy", new CultureInfo("es-ES"));
+		FechaEspanol = FechaEspanol.Replace('á', 'a');
+
+		if (string.IsNullOrWhiteSpace(_searchString))
+			return true;
+
+		if (FechaEspanol.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+			return true;
+
+		if (x.Evento.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+			return true;
+
+		if (x.Lugar.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+			return true;
+
+		return false;
+	};
+
+	// style the rows
+	private Func<CalendarioEventoDto, int, string> _rowStyleFunc => (x, i) =>
+	{
+		//return "font-style:italic";
+		if( i % 2 != 0)
+			return "background-color:#e9f4f8";
+		return "";
+	};
+
+	// style the cells.
+	private Func<CalendarioEventoDto, string> _cellStyleFunc => x =>
+	{
+		string style = "";
+
+		style += "font-weight:bold;font-size: 16px;";
+
+		return style;
+	};
+}

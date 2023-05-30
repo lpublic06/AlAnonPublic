@@ -1,0 +1,195 @@
+﻿@page "/calendario"
+@using System.Globalization
+@inject ICalendarioRepository _calendarioRepository
+@inject IJSRuntime _jsRuntime
+@attribute [Authorize(Roles = "Admin")]
+
+<h3>Manejar Calendario de Eventos</h3>
+@if (isLoading)
+{
+	//Loading Symbol
+	<div class="text-center pt-4">
+		<img src="/images/loading.gif">
+	</div>
+}
+else
+{
+	<MudSwitch Class="ps-4" @bind-Checked="@_isCellEditMode" Color="Color.Primary">Editar Celulas</MudSwitch>
+	<MudSwitch Class="ps-4" T="bool" CheckedChanged="@(() => PastCurrentMode())" Color="Color.Primary">Eventos Pasados</MudSwitch>
+	<MudDataGrid @ref="myDataGrid" T="CalendarioEventoDto" ReadOnly="false" Items="@CalendarioEventos" EditMode="@(_isCellEditMode ? DataGridEditMode.Cell : DataGridEditMode.Form)"
+			 ColumnResizeMode="@ResizeMode.Column" SortMode="@SortMode.Single"
+			 CommittedItemChanges="@CommittedItemChanges"
+			 Bordered="true" Dense="true" Striped="true" EditTrigger="@DataGridEditTrigger.Manual" Outlined="true"
+			 QuickFilter="@_quickFilter"
+			 RowStyle="font-weight:bold">
+		<ToolBarContent>
+			<MudButton Class="mt-1" ButtonType="ButtonType.Button" Variant="Variant.Filled" OnClick="@(() => AddItem())">Agregar</MudButton>
+			<MudBreakpointProvider></MudBreakpointProvider>
+			<MudTextField @bind-Value="_searchString" Placeholder="Buscar" Adornment="Adornment.Start" Immediate="true"
+					  AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="ps-6 mt-0"></MudTextField>
+		</ToolBarContent>
+		<Columns>
+			<Column T="CalendarioEventoDto" Field="FechaEntera" Title="Fecha">
+				<CellTemplate>
+					@DateTime.ParseExact(@context.Item.FechaEntera.Value.ToString("dddd, MMMM dd yyyy"), "dddd, MMMM dd yyyy", new CultureInfo("en-US")).ToString("dddd, MMMM dd yyyy", new CultureInfo("es-ES"))
+				</CellTemplate>
+				<EditTemplate>
+					    @*In edit cell mode this bind doesn't automatically register a change and thus I'm calling DateChanged to make sure it saves*@
+					<MudDatePicker @bind-Date="context.Item.FechaEntera" PickerClosed="@(() => DateChanged(context.Item))" DateFormat="MM.dd.yyyy" />
+				</EditTemplate>
+			</Column>
+			<Column T="CalendarioEventoDto" Field="Hora" />
+			<Column T="CalendarioEventoDto" Field="Evento" />
+			<Column T="CalendarioEventoDto" Field="Lugar" />
+			<Column T="CalendarioEventoDto" Hidden="@_isCellEditMode" CellClass="d-flex justify-end">
+				<CellTemplate>
+					<MudButton Class="mt-1" ButtonType="ButtonType.Button" Variant="Variant.Filled" OnClick="@context.Actions.StartEditingItem">Editar</MudButton>
+					<MudButton Class="mt-1" ButtonType="ButtonType.Button" Variant="Variant.Filled" OnClick="@(() => DeletedItem(context.Item.Id))">Borrar</MudButton>
+				</CellTemplate>
+			</Column>
+			<Column T="CalendarioEventoDto" Hidden="@(!_isCellEditMode)" CellClass="d-flex justify-center" IsEditable="false">
+				<CellTemplate>
+					<MudButton Class="btn btn-default btn-sm" ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Error" OnClick="@(() => DeletedItem(context.Item.Id))">
+						<span class="bi bi-trash"></span>
+					</MudButton>
+				</CellTemplate>
+			</Column>
+		</Columns>
+	</MudDataGrid>
+
+}
+@code {
+	private IEnumerable<CalendarioEventoDto> CalendarioEventos = new List<CalendarioEventoDto>();
+	private bool isLoading { get; set; } = true;
+	private bool _isCellEditMode;
+	private MudDataGrid<CalendarioEventoDto> myDataGrid;
+	private string _searchString;
+	private bool _isPastMode = true;
+	DateTimeOffset localTime;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		//Only load the categories the first time the page is rendered
+		if (firstRender)
+		{
+			// Get the timezone offset in minutes using JavaScript
+            int timezoneOffsetInMinutes = await _jsRuntime.InvokeAsync<int>("blazorGetTimezoneOffset");
+            // Create a DateTimeOffset object based on the local timezone offset
+            localTime = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromMinutes(timezoneOffsetInMinutes));
+			await ObtenerCalendarioAsync();
+		}
+	}
+
+	private async Task ObtenerCalendarioAsync()
+	{
+		isLoading = true;
+		StateHasChanged();
+		if (_isPastMode)
+		{
+			var result = await _calendarioRepository.ObtenerTodosLosCalendarioEventosActuales(localTime.LocalDateTime);
+			if (result != null && result.Exito)
+			{
+				CalendarioEventos = result.Data;
+			}
+		}
+		else
+		{
+			var result = await _calendarioRepository.ObtenerTodosLosCalendarioEventosPasados(localTime.LocalDateTime);
+			if (result != null && result.Exito)
+			{
+				CalendarioEventos = result.Data;
+			}
+		}
+		isLoading = false;
+		StateHasChanged();
+	}
+
+	private async Task DeletedItem(int itemId)
+	{
+		var result = await _calendarioRepository.BorrarCalendarioEvento(itemId);
+		if (result != null && result.Exito)
+		{
+			await ObtenerCalendarioAsync();
+		}
+	}
+
+	private async Task AddItem()
+	{
+		var nuevoCalendarioEvento = new CalendarioEventoDto()
+			{
+				Fecha = "",
+				Hora = "",
+				Evento = "",
+				Lugar = ""
+			};
+		var result = await _calendarioRepository.CrearEditarCalendarioEvento(nuevoCalendarioEvento);
+		if (result != null && result.Exito)
+		{
+			await ObtenerCalendarioAsync();
+		}
+
+		if (!_isCellEditMode)
+		{
+			await myDataGrid.SetEditingItemAsync(result.Data);
+		}
+	}
+
+	private async Task CommittedItemChanges(CalendarioEventoDto item)
+	{
+		var result = await _calendarioRepository.CrearEditarCalendarioEvento(item);
+		if (result != null && result.Exito)
+		{
+			if (_isPastMode)
+			{
+				var result1 = await _calendarioRepository.ObtenerTodosLosCalendarioEventosActuales(localTime.LocalDateTime);
+				if (result1 != null && result1.Exito)
+				{
+					CalendarioEventos = result1.Data;
+				}
+			}
+			else
+			{
+				var result1 = await _calendarioRepository.ObtenerTodosLosCalendarioEventosPasados(localTime.LocalDateTime);
+				if (result1 != null && result1.Exito)
+				{
+					CalendarioEventos = result1.Data;
+				}
+			}
+		}
+	}
+
+	private async Task PastCurrentMode()
+	{
+		_isPastMode = !_isPastMode;
+		await ObtenerCalendarioAsync();
+	}
+
+	private async Task DateChanged(CalendarioEventoDto item)
+	{
+		if(_isCellEditMode)
+		{
+			await CommittedItemChanges(item);
+		}
+	}
+
+	// quick filter - filter gobally across multiple columns with the same input
+	private Func<CalendarioEventoDto, bool> _quickFilter => x =>
+	{
+		var FechaEspanol = DateTime.ParseExact(x.FechaEntera.Value.ToString("dddd, MMMM dd yyyy"), "dddd, MMMM dd yyyy", new CultureInfo("en-US")).ToString("dddd, MMMM dd yyyy", new CultureInfo("es-ES"));
+		FechaEspanol = FechaEspanol.Replace('á', 'a');
+
+		if (string.IsNullOrWhiteSpace(_searchString))
+			return true;
+
+		if (FechaEspanol.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+			return true;
+
+		if (x.Evento.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+			return true;
+
+		if (x.Lugar.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+			return true;
+
+		return false;
+	};
+}

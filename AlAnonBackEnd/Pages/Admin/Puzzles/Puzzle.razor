@@ -1,0 +1,206 @@
+﻿@page "/puzzle"
+@using System.Collections.Generic
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@inject IJSRuntime jsRuntime
+<style>
+table, th, td {
+  border: 1px solid black;
+}
+</style>
+<br><br>
+      <h1>Crossword Layout Generator</h1>
+      <h2>Enter a list of words below</h2><br><br>
+
+      <textarea id="words" rows="9" cols="35" @bind="@wordList" autofocus="autofocus" style="font-size: 16px;" placeholder="Enter words on separate lines..."></textarea><br><br><br><br>
+      <button onclick="button_clicked" style="font-size: 14px; cursor: pointer;">Generate Layout</button>
+      <MudButton Variant="Variant.Filled" OnClick="(() => button_clicked())" StartIcon="@Icons.Material.Filled.Save" IconColor="Color.Secondary" Size="Size.Large">Grabar</MudButton>
+<br>
+<br>
+<br>
+
+<div>
+    <table>
+        @for(x = 0 ; x < Rows.Count; x++)
+        @*@foreach (var row in Rows)*@
+        {
+            <tr>
+                @for(y = 0; y < Rows[x].Cells.Count; y++)
+                @*@foreach (var cell in row.Cells)*@
+                {
+                    <td >
+                        @if (Rows[x].Cells[y].IsBlack)
+                        {
+                            <div style="stylefont-size: 12px; padding: 0;" class="black">&nbsp;</div>
+                        }
+                        else
+                        {
+                            <input  type="text" class="input" @onkeydown="((args)=>HandleKeyDown(args, x, y))" @bind-value="@Rows[x].Cells[y].Value" />
+                            @if (Rows[x].Cells[y].IsHighlighted)
+                            {
+                                <div class="highlight"></div>
+                            }
+                        }
+                    </td>
+                }
+            </tr>
+        }
+    </table>
+</div>
+
+@code {
+    public List<Row> Rows { get; set; } = new List<Row>();
+    public string wordList { get; set; } = String.Empty;
+    public int x { get; set; }
+    public int y { get; set; }
+    private bool isLoading { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Rows = await LoadPuzzle();
+    }
+
+    private async Task<List<Row>> LoadPuzzle(PuzzleObj puzzleObject)
+    {
+        //var puzzleData = await jsRuntime.InvokeAsync<PuzzleData>("loadPuzzle");
+
+        var rows = new List<Row>();
+
+        if (puzzleObject.table.Any())
+        {
+            foreach (var puzzleRow in puzzleObject.table)
+            {
+                var row = new Row();
+
+                foreach (var puzzleCell in puzzleRow)
+                {
+                    var cell = new Cell
+                        {
+                            IsBlack = (puzzleCell == "-"),
+                            IsHighlighted = false,
+                            Value = puzzleCell
+                        };
+
+                    row.Cells.Add(cell);
+                }
+
+                rows.Add(row);
+            }
+        }
+
+        return rows;
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs args, int rowIndex, int cellIndex)
+    {
+        if (args.Key == "ArrowRight")
+        {
+            NavigateToCell(rowIndex, cellIndex + 1);
+        }
+        else if (args.Key == "ArrowLeft")
+        {
+            NavigateToCell(rowIndex, cellIndex - 1);
+        }
+        else if (args.Key == "ArrowDown")
+        {
+            NavigateToCell(rowIndex + 1, cellIndex);
+        }
+        else if (args.Key == "ArrowUp")
+        {
+            NavigateToCell(rowIndex - 1, cellIndex);
+        }
+    }
+
+    private void NavigateToCell(int rowIndex, int cellIndex)
+    {
+        var rows = Rows.Count;
+        var cells = Rows[0].Cells.Count;
+
+        if (rowIndex >= 0 && rowIndex < rows && cellIndex >= 0 && cellIndex < cells)
+        {
+            Rows[rowIndex].Cells[cellIndex].IsHighlighted = true;
+        }
+    }
+
+    public class PuzzleData
+    {
+        public List<PuzzleRow> Rows { get; set; }
+    }
+
+    public class PuzzleRow
+    {
+        public List<PuzzleCell> Cells { get; set; }
+    }
+
+    public class PuzzleCell
+    {
+        public bool IsBlack { get; set; }
+        public bool IsHighlighted { get; set; }
+        public string Value { get; set; }
+    }
+
+    public class Row
+    {
+        public List<Cell> Cells { get; set; }
+
+        public Row()
+        {
+            Cells = new List<Cell>();
+        }
+    }
+
+    public class Cell
+    {
+        public bool IsBlack { get; set; }
+        public bool IsHighlighted { get; set; }
+        public string Value { get; set; }
+    }
+
+    public class InputWords
+    {
+        public string clue { get; set; }
+        public string answer { get; set;  }
+    }
+
+    public class OutputLayout
+    {
+        public List<string>[] table { get; set; }
+
+    }
+
+    public class PuzzleObj
+    {
+        public List<List<string>> table { get; set; }
+        public List<Result> result { get; set; }
+        public int rows { get; set; }
+        public int cols { get; set; }
+        public string table_string { get; set; }
+    }
+
+    public class Result
+    {
+        public string clue { get; set; }
+        public string answer { get; set; }
+        public int startx { get; set; }
+        public int starty { get; set; }
+        public string orientation { get; set; }
+        public int position { get; set; }
+    }
+
+    public async void button_clicked()
+    {
+        var InputList = new List<InputWords>();
+        foreach(var line in wordList.Split('\n'))
+        {
+            var InputWord = new InputWords();
+            var input = line.Split(' ');
+            InputWord.answer = input[0];
+            InputWord.clue = String.Join(" ", input.Skip(1));
+            InputList.Add(InputWord);
+        }
+        var layout = await jsRuntime.InvokeAsync<PuzzleObj>("generateLayout", InputList);
+        isLoading = true;
+        Rows = await LoadPuzzle(layout);
+        isLoading = false;
+    }
+}

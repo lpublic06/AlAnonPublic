@@ -1,0 +1,211 @@
+﻿ @page "/publico/grupos"
+
+@inject IGrupoRepository _grupoRepository
+@inject IInfoRepository _infoRepository
+
+<h1 class="text-center font-weight-bold">JUNTAS EN ESPAÑOL</h1>
+@if (isLoading)
+{
+	//Loading Symbol
+	<div class="text-center pt-4">
+		<img src="/images/loading.gif">
+	</div>
+}
+else
+{
+	<h3 class="text-center font-weight-bold">@Informacion.NumeroIntegrupal</h3>
+	if (ListaDeGrupos.Count() > 0)
+	{	
+		@*Filters by area and by day. Drop down selects and handlers.*@
+		@*Select an area and bind it to AreaEscojida then call AreaCambio to handle AreasEscojidas*@
+		<div class="form-group col-8">
+			<div class="row">
+				<div class="col-xl-3 col-sm-6 col-md-6">
+				Filtro de Area:
+			<select class="custom-select" @onchange="AreaCambio" title="Filtro de Area">
+				<option value="Todas" selected>Todas</option>
+				@foreach (var area in SD.ListaDeAreas.Where(u => u != "Zoom"))
+				{
+					<option value="@area"> @area</option>
+				}
+			</select>
+		@*Select an area and bind it to AreaEscojida then call AreaCambio to handle AreasEscojidas*@
+				</div>
+				<div class="col-xl-3 col-sm-6 col-md-6">
+					Filtro de Dia:
+					<select class="custom-select" @onchange="DiaCambio" title="Filtro de Dia">
+						<option value="Todas" selected>Todas</option>
+						@foreach (var dia in SD.ListaDeDias)
+						{
+							<option value="@dia"> @dia</option>
+						}
+					</select>
+				</div>
+			</div>
+		</div>
+
+		@*Check if filters are applied*@
+		if(ListaDeGrupos.Where(u => u.Area.Contains(FiltroArea == "Todas" ? u.Area : FiltroArea)).Count() == 0)
+		{
+			<p>No hay juntas en esta area.</p>
+		}
+		
+		if (ListaDeGrupos.Where(u => u.Area.Contains(FiltroArea == "Todas" ? u.Area : FiltroArea) && u.Dias.Contains(FiltroDia == "Todas" ? u.Dias : FiltroDia)).Count() == 0)
+		{
+			<p>No hay juntas en este dia.</p>
+		}
+
+		@foreach (var tipo in ListaDeGrupos.Where(u => u.Area.Contains(FiltroArea == "Todas" ? u.Area : FiltroArea) && u.Dias.Contains(FiltroDia == "Todas" ? u.Dias : FiltroDia)).Select(u => u.TipoDeJunta).Distinct())
+		{
+			@*Only print if any meetings exist with tipo*@
+			@if (ListaDeGrupos.Where(u => u.TipoDeJunta == tipo && u.Area.Contains(FiltroArea == "Todas" ? u.Area : FiltroArea) && u.Dias.Contains(FiltroDia == "Todas" ? u.Dias : FiltroDia)).Count() > 0)
+			{
+				<h3 class="font-weight-bold text-decoration-underline">@(tipo == "Fisica"? "Reuniones Fisicas" : "Reuniones Electronicas")</h3>
+				@foreach (var area in FiltroAreaList)
+				{
+					@*Only print if any meetings exist with area and day filter*@
+					@if (ListaDeGrupos.Where(u => u.Area == area && u.TipoDeJunta == tipo && u.Dias.Contains(FiltroDia == "Todas" ? u.Dias : FiltroDia)).Count() > 0)
+					{
+						<p class="text-decoration-underline">@area:</p>
+						<div class="container m-0">
+							<div class="row pt-4 backgroundWhite">
+								@foreach (var grupo in ListaDeGrupos.Where(u => u.TipoDeJunta == tipo && u.Area == area && u.Dias.Contains(FiltroDia == "Todas" ? u.Dias : FiltroDia)))
+								{
+									<div class="col-lg-4 col-md-6 pb-4 filter">
+										<div class="card border border-info shadow-0 mb-3" style="max-width: 100%;">
+											@if (@grupo.Alateen == "Alateen")
+											{
+												<div class="card-header" style="background-color: #000DFF; color:white;">
+													Alateen! @grupo.Nombre
+												</div>
+											}
+											else
+											{
+												<div class="card-header" style="background-color: #000DFF; color:white;">
+													@grupo.Nombre
+												</div>
+											}
+											<div class="card-body">
+												@*h5 class="card-title">Info card title</h5>*@
+												<div class="row">
+													@*<div class="col-xs-4 hidden-sm hidden-md hidden-lg">Direccion</div>*@
+													<div class="col-5" style="font-weight:bold;">Direccion:</div>
+													<div class="col text-end">@grupo.Direccion</div>
+												</div>
+												<div class="row">
+													<div class="col" style="font-weight:bold;">Dias:</div>
+													<div class="col-auto">@grupo.Dias</div>
+												</div>
+												<div class="row">
+													<div class="col" style="font-weight:bold;">Horas:</div>
+													<div class="col-auto">@grupo.Horas</div>
+												</div>
+												<div class="row">
+													<div class="col-5" style="font-weight:bold;">Numero:</div>
+													<div class="col text-end" >@grupo.Numero</div>
+												</div>
+												<div class="row">
+													<div class="col" style="font-weight:bold;">Zoom Id:</div>
+													<div class="col-auto">@grupo.NumeroDeSala</div>
+												</div>
+												<div class="row">
+													<div class="col" style="font-weight:bold;">Clave:</div>
+													<div class="col-auto">@grupo.Contraseña</div>
+												</div>
+																								<div class="row">
+													<div class="col" style="font-weight:bold;">Notas:</div>
+													<div class="col-auto">@grupo.Notas</div>
+												</div>
+											</div>
+										</div>
+									</div>
+								}
+							</div>
+						</div>
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		<p>No hay juntas.</p>
+	}
+}
+@code {
+	private List<GrupoDto> ListaDeGrupos = new();
+	private bool isLoading { get; set; } = true;
+	private InformacionDto Informacion = new();
+	private bool EditarNumero { get; set; } = false;
+	private string FiltroDia { get; set; } = "Todas";
+	private string FiltroArea { get; set; } = "Todas";
+	private List<string> FiltroAreaList { get; set; } = SD.ListaDeAreas;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		//Only load the categories the first time the page is rendered
+		if (firstRender)
+		{
+			await ObtenerInfo();
+			await ObtenerGrupos();
+		}
+	}
+
+	private async Task ObtenerGrupos()
+	{
+		isLoading = true;
+		StateHasChanged();
+		var result = await _grupoRepository.ObtenerTodosLosGrupos();
+		if (result != null && result.Exito)
+		{
+			ListaDeGrupos = result.Data;
+		}
+		isLoading = false;
+		StateHasChanged();
+	}
+
+	private async Task ObtenerInfo()
+	{
+		isLoading = true;
+		StateHasChanged();
+		var result = await _infoRepository.ObtenerInfo();
+		if (result != null && result.Exito)
+		{
+			Informacion = result.Data;
+		}
+		isLoading = false;
+		StateHasChanged();
+	}
+
+	private async Task AreaCambio(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+	{
+		string AreaEscojida = e.Value.ToString();
+		List<string> AreaEscojidaList = new();
+
+		isLoading = true;
+		StateHasChanged();
+		FiltroArea = AreaEscojida;
+		if(AreaEscojida == "Todas")
+		{
+			AreaEscojidaList = SD.ListaDeAreas;
+		}
+		else
+		{
+			AreaEscojidaList.Add(AreaEscojida);
+		}
+		FiltroAreaList = AreaEscojidaList;
+		isLoading = false;
+		StateHasChanged();
+	}
+
+	private async Task DiaCambio(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+	{
+		string DiaEscojida = e.Value.ToString();
+
+		isLoading = true;
+		StateHasChanged();
+		FiltroDia = DiaEscojida;
+		isLoading = false;
+		StateHasChanged();
+	}
+}

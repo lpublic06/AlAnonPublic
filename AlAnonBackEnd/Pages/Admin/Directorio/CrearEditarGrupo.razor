@@ -1,0 +1,221 @@
+﻿@page "/grupos/crear/"
+@page "/grupos/editar/{id:int}"
+
+
+@inject IGrupoRepository _grupoRepository
+@inject NavigationManager _navigationManager
+@inject IJSRuntime _jsRuntime
+@*@attribute [Authorize]*@
+
+<h3 class="card-title text-primary mb-3 ml-3">@Title Junta</h3>
+
+<div class="col-md-10">
+	@if (isLoading)
+	{
+		<div class="text-center">
+			<img src="/images/loading.gif">
+		</div>
+	}
+	else
+	{
+		<EditForm Model="Grupo" OnValidSubmit="CrearEditar">
+			<DataAnnotationsValidator />
+			@*<ValidationSummary/>*@
+			<div class="form-group col-8">
+					<label>Tipo</label>
+					<InputSelect @bind-Value="Grupo.TipoDeJunta" class="form-select">
+						<option value="" disabled="disabled" selected>--Seleccionar Tipo--</option>
+						@foreach (var tipo in SD.ListaDeTipos)
+						{
+							<option value="@tipo">@tipo</option>
+						}
+				</InputSelect>
+				<ValidationMessage For="()=>Grupo.TipoDeJunta"></ValidationMessage>
+			</div>
+			<div class="form-group col-8">
+					<label>Area</label> 
+					<InputSelect @bind-Value="Grupo.Area" class="form-select">
+						<option value="" disabled="disabled" selected>--Seleccionar Area--</option>
+						@foreach (var area in SD.ListaDeAreas)
+						{
+						<option value="@area">@area</option>
+						}
+				</InputSelect>
+				<ValidationMessage For="()=>Grupo.Area"></ValidationMessage>
+			</div>
+			<div class="form-group col-8">
+					<label>Alanon o Alateen?</label>
+					<InputSelect @bind-Value="Grupo.Alateen" class="form-select">
+						<option value="" disabled="disabled" selected>--Seleccionar--</option>
+						@foreach (var prog in SD.ListaDeProgramas)
+						{
+						<option value="@prog">@prog</option>
+						}
+				</InputSelect>
+				<ValidationMessage For="()=>Grupo.Alateen"></ValidationMessage>
+			</div>
+			<div class="form-group">
+				<label>Nombre</label>
+				<InputText @bind-Value="Grupo.Nombre" class="form-control"></InputText>
+				<ValidationMessage For="()=>Grupo.Nombre"></ValidationMessage>
+			</div>
+		    <div class="form-group">
+				@if(Grupo.TipoDeJunta != "Presencial")
+				{
+					<label>Direccion (opcional)</label> 
+				}
+				else
+				{
+					<label>Direccion</label>
+				}
+				<InputText @bind-Value="Grupo.Direccion" class="form-control"></InputText>
+				<ValidationMessage For="()=>Grupo.Direccion"></ValidationMessage>
+			</div>
+		    <div class="form-group pt-4">
+				<label class="me-2">Dias:</label>
+	@*			<InputText @bind-Value="Grupo.Dias" class="form-control"></InputText>
+				<ValidationMessage For="()=>Grupo.Dias"></ValidationMessage>*@
+				@foreach (var dia in SD.ListaDeDias)
+				{
+					<div class="form-check form-check-inline mx-2">
+						<input class="form-check-input" type="checkbox" value="@dia" @onchange="(()=>DiaCambio(dia))"
+						  checked="@(ListaDiasEscojido.Contains(dia))">
+						<label class="form-check-label">@dia </label>
+					</div>
+				}
+@*				<div class="form-check form-check-inline">
+					<input class="form-check-input" type="checkbox" id="inlineCheckbox1" value="option1">
+					<label class="form-check-label" for="inlineCheckbox1">Lunes</label>
+				</div>*@
+			</div>
+		    <div class="form-group">
+				<label>Horas</label>
+				<InputText @bind-Value="Grupo.Horas" class="form-control"></InputText>
+				<ValidationMessage For="()=>Grupo.Horas"></ValidationMessage>
+			</div>
+		    <div class="form-group">
+				<label>Numero (opcional)</label>
+				<InputText @bind-Value="Grupo.Numero" class="form-control"></InputText>
+				<ValidationMessage For="()=>Grupo.Numero"></ValidationMessage>
+			</div>
+			 <div class="form-group">
+				@if(Grupo.TipoDeJunta == "Presencial")
+				{
+					<label>Zoom Id (opcional)</label> 
+				}
+				else
+				{
+					<label>Zoom Id</label>
+				}
+				<InputText @bind-Value="Grupo.NumeroDeSala" class="form-control"></InputText>
+				<ValidationMessage For="()=>Grupo.NumeroDeSala"></ValidationMessage>
+			</div>
+			<div class="form-group">
+				@if(Grupo.TipoDeJunta == "Presencial")
+				{
+					<label>Clave (opcional)</label> 
+				}
+				else
+				{
+					<label>Clave</label>
+				}
+				<InputText @bind-Value="Grupo.Contraseña" class="form-control"></InputText>
+				<ValidationMessage For="()=>Grupo.Contraseña"></ValidationMessage>
+			</div>
+			<div class="form-group">
+				<label>Notas</label>
+				<InputText @bind-Value="Grupo.Notas" class="form-control"></InputText>
+				<ValidationMessage For="()=>Grupo.Notas"></ValidationMessage>
+			</div>
+		<div class="form-group py-2">
+			<button class="btn btn-primary">@Title</button>
+			<NavLink href="grupos" class="btn btn-secondary">Regresar a la lista</NavLink>
+		</div>
+	</EditForm>
+	}
+</div>
+@code {
+	[Parameter]
+	public int Id { get; set; }
+
+	private string Title { get; set; } = "Crear";
+	private List<string> ListaDiasEscojido { get; set; } = new();
+	private bool isLoading { get; set; } = true;
+	private GrupoDto Grupo { get; set; } = new();
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			await ObtenerGrupo();
+		}
+
+	}
+
+	private async Task ObtenerGrupo()
+	{
+		isLoading=true;
+		StateHasChanged();
+		if (Id!=0)
+		{
+			//update
+			Title="Actualizar";
+			var resultado = await _grupoRepository.ObtenerGrupo(Id);
+			if(resultado != null && resultado.Exito)
+			{
+				Grupo = resultado.Data;
+				string[] dias = Grupo.Dias.Split(' ');
+				foreach(var dia in dias)
+				{
+					ListaDiasEscojido.Add(dia);
+				}
+			}
+		}
+		isLoading=false;
+		StateHasChanged();
+	}
+
+	private async Task CrearEditar()
+	{
+		if (Grupo.Id == 0)
+		{
+			//create
+			await _grupoRepository.CrearEditarGrupo(Grupo);
+			await _jsRuntime.ToastrSuccess("Grupo Creado Exitosamente.");
+		}
+		else
+		{
+			//update
+			await _grupoRepository.CrearEditarGrupo(Grupo);
+			await _jsRuntime.ToastrSuccess("Grupo Actualizado Exitosamente.");
+		}
+		_navigationManager.NavigateTo("grupos");
+	}
+
+	private async Task DiaCambio(string dia)
+	{
+		string DiasEscojidos = string.Empty;
+
+		isLoading = true;
+		StateHasChanged();
+		if(ListaDiasEscojido.Contains(dia))
+		{
+			ListaDiasEscojido.Remove(dia);
+		}
+		else
+		{
+			ListaDiasEscojido.Add(dia);
+		}
+
+		foreach (var dias in ListaDiasEscojido)
+		{
+			DiasEscojidos += dias;
+			DiasEscojidos += ' ';
+		}
+
+		Grupo.Dias = DiasEscojidos;
+
+		isLoading = false;
+		StateHasChanged();
+	}
+}

@@ -1,0 +1,17 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> _userManager
+@inject SignInManager<ApplicationUser> _signInManager
+<AuthorizeView>
+	<Authorized>
+		<a class="nav-link btn btn-link" href="Identity/Account/Manage">Hello, @context.User.Claims?.FirstOrDefault(x => x.Type.Equals("given_name", StringComparison.OrdinalIgnoreCase))?.Value</a>
+		<form method="post" action="Identity/Account/LogOut">
+			<button type="submit" class="nav-link btn btn-link">Terminar Sesion</button>
+		</form>
+	</Authorized>
+	<NotAuthorized>
+		<a class="nav-link btn btn-link" href="Identity/Account/Register">Registrar</a>
+		<a class="nav-link btn btn-link" href="Identity/Account/Login">Iniciar Sesion</a>
+	</NotAuthorized>
+</AuthorizeView>
+
+

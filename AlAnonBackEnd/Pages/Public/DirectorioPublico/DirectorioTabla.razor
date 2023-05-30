@@ -1,0 +1,132 @@
+﻿@page "/publico/grupos/tabla"
+
+@inject IGrupoRepository _grupoRepository
+@inject IInfoRepository _infoRepository
+
+<h1 class="text-center font-weight-bold">JUNTAS EN ESPAÑOL</h1>
+@if (isLoading)
+{
+	//Loading Symbol
+	<div class="text-center pt-4">
+		<img src="/images/loading.gif">
+	</div>
+}
+else
+{
+	<h3 class="text-center font-weight-bold">@Informacion.NumeroIntegrupal</h3>
+	if (ListaDeGrupos.Count() > 0)
+	{
+		@foreach (var tipo in SD.ListaDeTipos)
+		{
+			@*Only print if any meetings exist with tipo*@
+			@if (ListaDeGrupos.Where(u => u.TipoDeJunta == tipo).Count() > 0)
+			{
+				<h3 class="font-weight-bold text-decoration-underline">@tipo</h3>
+				@foreach (var area in SD.ListaDeAreas)
+				{
+					@*Only print if any meetings exist with area*@
+					@if (ListaDeGrupos.Where(u => u.Area == area && u.TipoDeJunta == tipo).Count() > 0)
+					{
+						<p class="text-decoration-underline">@area:</p>
+							<table class="table table-bordered" style="max-width:100%">
+								<thead>
+									<tr>
+										<th style="width: 25%">Nombre</th>
+										<th style="width: 25%">Direccion</th>
+										<th style="width: 10%">Dias</th>
+										<th style="width: 10%">Horas</th>
+										<th style="width: 10%">Numero</th>
+										<th style="width: 10%">Zoom Id</th>
+										<th style="width: 10%">Clave</th>
+									</tr>
+								</thead>
+								<tbody>
+									@foreach (var grupo in ListaDeGrupos.Where(u => u.TipoDeJunta == tipo && u.Area == area))
+									{
+										<tr>
+											@*Account for alateen in the name*@
+											@if (grupo.Alateen == "Alateen")
+											{
+												<td>Alateen! -> @grupo.Nombre</td>
+											}
+											else
+											{
+												<td>
+													@grupo.Nombre
+												</td>
+											}
+											<td>
+												@grupo.Direccion
+											</td>
+											<td>
+												@grupo.Dias
+											</td>
+											<td>
+												@grupo.Horas
+											</td>
+											<td>
+												@grupo.Numero
+											</td>
+											<td>
+												@grupo.NumeroDeSala
+											</td>
+											<td>
+												@grupo.Contraseña
+											</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		<p>No hay juntas.</p>
+	}
+}
+@code {
+	private List<GrupoDto> ListaDeGrupos = new();
+	private bool isLoading { get; set; } = false;
+	private InformacionDto Informacion = new();
+	private bool EditarNumero = false;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		//Only load the categories the first time the page is rendered
+		if (firstRender)
+		{
+			await ObtenerInfo();
+			await ObtenerGrupos();
+		}
+	}
+
+	private async Task ObtenerGrupos()
+	{
+		isLoading = true;
+		StateHasChanged();
+		var result = await _grupoRepository.ObtenerTodosLosGrupos();
+		if (result != null && result.Exito)
+		{
+			ListaDeGrupos = result.Data;
+		}
+		isLoading = false;
+		StateHasChanged();
+	}
+
+	private async Task ObtenerInfo()
+	{
+		isLoading = true;
+		StateHasChanged();
+		var result = await _infoRepository.ObtenerInfo();
+		if (result != null && result.Exito)
+		{
+			Informacion = result.Data;
+		}
+		isLoading = false;
+		StateHasChanged();
+	}
+
+}

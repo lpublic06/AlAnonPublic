@@ -1,0 +1,172 @@
+﻿@page "/invitaciones/crear/"
+@page "/invitaciones/editar/{id:int}"
+
+@inject IWebHostEnvironment Environment
+@inject IInvitacionRepository _invitacionRepository
+@inject NavigationManager _navigationManager
+@inject IJSRuntime _jsRuntime
+@inject IFileService _fileUpload
+@*@attribute [Authorize]*@
+
+<h3 class="card-title text-primary mb-3 ml-3">@Title Invitacion</h3>
+<div class="row my-2">
+	@if (isLoading)
+	{
+		<div class="text-center">
+			<img src="/images/loading.gif">
+		</div>
+	}
+	else
+	{
+		<div class="col-xl-6">
+		<EditForm Model="InvitacionNueva" OnValidSubmit="CrearEditar">
+			<DataAnnotationsValidator />
+			<div class="form-group  pt-4">
+				<label for="name">Nombre Del Evento:</label>
+				<InputText class="form-control" id="nombre" @bind-Value="@InvitacionNueva.Nombre" />
+				<ValidationMessage For="@(() => InvitacionNueva.Nombre)" />
+			</div>
+			<div class="form-group pt-4">
+				<label for="date">Fecha Del Evento:</label>
+				<InputDate class="form-control" id="date" @bind-Value="@InvitacionNueva.FechaEntera" />
+				<ValidationMessage For="@(() => InvitacionNueva.FechaEntera)" />
+			</div>
+			<div class="form-group pt-4">
+				<label for="picture">Foto Del Evento (opcional):</label>
+				<br>
+				<InputFile OnChange="HandleImageUpload"></InputFile>
+			</div>
+			<br>
+			<div class="form-group py-2">
+				<button class="btn btn-primary">@Title</button>
+				<NavLink href="invitaciones" class="btn btn-secondary">Regresar a la lista</NavLink>
+			</div>
+		</EditForm>
+		</div>
+		@if (InvitacionNueva.ImagePath == "/Images/default.png")
+		{
+			<div class="col-xl-4">
+				<img src="@InvitacionNueva.ImagePath" class="w-100" />
+			</div>
+		}
+		else
+		{
+			<div class="col-xl-6">
+				<img src="@InvitacionNueva.ImagePath" class="w-100" />
+			</div>
+		}
+	}
+</div>
+@code {
+	[Parameter]
+	public int Id { get; set; }
+
+	private string Title { get; set; } = "Crear";
+	private bool isLoading { get; set; } = true;
+	private InvitacionDto InvitacionNueva { get; set; } = new InvitacionDto()
+	{
+			ImagePath = "/Images/default.png"
+	};
+	public string OldImageUrl { get; set; }
+	private IBrowserFile rawFile { get; set; } 
+	public string path = String.Empty;
+
+
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			await ObtenerInvitacion();
+		}
+
+	}
+
+	private async Task ObtenerInvitacion()
+	{
+		isLoading = true;
+		StateHasChanged();
+		if (Id != 0)
+		{
+			//update
+			Title = "Actualizar";
+			var resultado = await _invitacionRepository.ObtenerInvitacion(Id);
+			if (resultado != null && resultado.Exito)
+			{
+				InvitacionNueva = resultado.Data;
+				OldImageUrl = InvitacionNueva.ImagePath;
+			}
+		}
+		isLoading = false;
+		StateHasChanged();
+	}
+
+	private async Task CrearEditar()
+	{
+		InvitacionNueva.Fecha = InvitacionNueva.FechaEntera.ToString();
+		InvitacionNueva.Alt = "Los Grupos de Al-Anon en El Paso Texas y Sur De Deming los invita a el evento:" + InvitacionNueva.Nombre;
+
+		if (InvitacionNueva.Id == 0)
+		{
+			if(rawFile != null)
+			{
+				InvitacionNueva.ImagePath = await _fileUpload.UploadFile(rawFile);
+			}
+			await _invitacionRepository.CrearEditarInvitacion(InvitacionNueva);
+			await _jsRuntime.ToastrSuccess("Invitacion Creada Exitosamente.");
+		}
+		else
+		{
+			//update
+			if (OldImageUrl != InvitacionNueva.ImagePath && !OldImageUrl.Contains("default.png"))
+			{
+				InvitacionNueva.ImagePath = await _fileUpload.UploadFile(rawFile);
+				_fileUpload.DeleteFile(OldImageUrl);
+			}
+			await _invitacionRepository.CrearEditarInvitacion(InvitacionNueva);
+			await _jsRuntime.ToastrSuccess("Invitacion Actualizada Exitosamente.");
+		}
+		_navigationManager.NavigateTo("invitaciones");
+	}
+
+	private async Task HandleImageUpload(InputFileChangeEventArgs e)
+	{
+		//       isLoading = true;
+		rawFile = e.File;
+
+		try
+		{
+			if (rawFile != null)
+			{
+				System.IO.FileInfo fileInfo = new System.IO.FileInfo(rawFile.Name);
+				if (fileInfo.Extension.ToLower() == ".jpg" ||
+				fileInfo.Extension.ToLower() == ".png" ||
+				fileInfo.Extension.ToLower() == ".jpeg")
+				{
+					path = Path.Combine(Environment.WebRootPath,
+							"Images",
+								$"ImagenDeInicio{fileInfo.Extension.ToLower()}");
+
+					await using FileStream fs = new(path, FileMode.Create);
+					await rawFile.OpenReadStream().CopyToAsync(fs);
+					fs.Position = 0;
+					byte[] buf = new byte[fs.Length];
+					fs.Read(buf, 0, buf.Length);
+					//selectedImage = rawFile.RequestImageFileAsync(rawFile.ContentType, 1024, 140);
+
+					InvitacionNueva.ImagePath = $"data:{rawFile.ContentType};base64,{Convert.ToBase64String(buf.ToArray())}";
+				}
+				else
+				{
+					await _jsRuntime.ToastrError("Porfavor escojer una foto de tipo .jpg/.jpeg/.png file only");
+				}
+				isLoading = false;
+			}
+		}
+		catch (Exception ex)
+		{
+			await _jsRuntime.ToastrError(ex.Message);
+		}
+	}
+
+}

@@ -1,0 +1,86 @@
+﻿<div style="background-image: linear-gradient(135deg, #6B73FF 10%, #000DFF 100%);" class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Al-Anon</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass d-print-none" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Inicio
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/publico/grupos">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Juntas
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/publico/calendario">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Calendario
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/publico/invitaciones">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Invitaciones
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/publico/documentos">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Documentos
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/publico/boletin">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Boletin
+            </NavLink>
+        </div>
+        <AuthorizeView Roles="Admin">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/ManejarInicio" Match="NavLinkMatch.All">
+                    <span class="oi oi-home" aria-hidden="true"></span> Manejar Inicio
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/grupos">
+                    <span class="oi oi-plus" aria-hidden="true"></span> Manejar Juntas
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/calendario">
+                    <span class="oi oi-plus" aria-hidden="true"></span> Manejar Calendario
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/invitaciones">
+                    <span class="oi oi-plus" aria-hidden="true"></span> Manejar Invitaciones
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/documentos">
+                    <span class="oi oi-plus" aria-hidden="true"></span> Manejar Documentos
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/Boletin">
+                    <span class="oi oi-plus" aria-hidden="true"></span> Manejar Boletin
+                </NavLink>
+            </div>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

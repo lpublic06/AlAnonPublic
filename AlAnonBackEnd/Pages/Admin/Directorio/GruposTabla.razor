@@ -1,0 +1,200 @@
+﻿@page "/grupos/tabla"
+
+@inject IGrupoRepository _grupoRepository
+@inject IInfoRepository _infoRepository
+@inject IJSRuntime _jsRuntime
+@*@attribute [Authorize]*@
+
+<_DeleteConfirmation isParentComponentProcessing="isLoading" DeleteFunc="DeleteConfirmed"></_DeleteConfirmation>
+<div class="row mt-4">
+	<div class="col-6">
+		<h4 class="card-title text-primary">Manejar Lista De Juntas</h4>
+	</div>
+
+	@if (isLoading)
+	{
+		//Loading Symbol
+		<div class="text-center pt-4">
+			<img src="/images/loading.gif">
+		</div>
+	}
+	else
+	{
+		<div class="col-4 offset-2">
+			<a href="grupos/crear" class="btn btn-primary form-control">Crear Junta </a>
+		</div>
+		if (EditarNumero)
+		{
+			<div class="col-6 offset-3">
+				Numero De La Integrupal: <input type="text" @bind-value="@Informacion.NumeroIntegrupal" />
+				<button class="btn btn-primary btn-sm" @onclick="GrabarNumero">Guardar</button> <br />
+			</div>
+		}
+		else
+		{
+			<div class="col-6 offset-3">
+				Numero De La Integrupal: @Informacion.NumeroIntegrupal
+				<button class="btn btn-primary btn-sm" @onclick="ActualizarNumero">Editar</button> <br />
+			</div>
+		}
+		<div class="col-12 p-3">
+			@if (ListaDeGrupos.Count() > 0)
+			{
+					<table class="table table-bordered">
+						<thead>
+							<tr>
+								<th style="width: 5%">Tipo</th>
+								<th style="width: 10%">Area</th>
+								<th style="width: 10%">Alanon o Alateen</th>
+								<th style="width: 10%">Nombre</th>
+								<th style="width: 10%">Direccion</th>
+								<th style="width: 10%">Dias</th>
+								<th style="width: 10%">Horas</th>
+								<th style="width: 10%">Numero</th>
+								<th style="width: 10%">Zoom Id</th>
+								<th style="width: 5%">Clave</th>
+								<th style="width: 10%">Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							@foreach (var grupo in ListaDeGrupos)
+							{
+								<tr>
+									<td>
+										@grupo.TipoDeJunta
+									</td>
+									<td>
+										@grupo.Area
+									</td>
+									<td>
+										@grupo.Alateen
+									</td>
+									<td>
+										@grupo.Nombre
+									</td>
+									<td>
+										@grupo.Direccion
+									</td>
+									<td>
+										@grupo.Dias
+									</td>
+									<td>
+										@grupo.Horas
+									</td>
+									<td>
+										@grupo.Numero
+									</td>
+									<td>
+										@grupo.NumeroDeSala
+									</td>
+									<td>
+										@grupo.Contraseña
+									</td>
+									<td>
+										<NavLink href="@($"grupos/editar/{grupo.Id}")" class="btn-primary btn">Editar</NavLink>
+										<button class="btn btn-danger" @onclick="()=>HandleDelete(grupo.Id)">Borrar</button>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+			}
+			else
+			{
+				//no records
+				<p>No hay juntas que manejar.</p>
+			}
+		</div>
+	}
+</div>
+@code {
+	private List<GrupoDto> ListaDeGrupos { get; set; } = new List<GrupoDto>();
+	private GrupoDto Grupo = new();
+	private bool isLoading { get; set; } = false;
+	private int savedId;
+	private InformacionDto Informacion = new();
+	private string numeroGrabado = string.Empty;
+	private bool EditarNumero = false;
+	//Done after a first render
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		//Only load the categories the first time the page is rendered
+		if (firstRender)
+		{
+			await ObtenerInfo();
+			await ObtenerGrupos();
+		}
+	}
+
+	private async Task ObtenerGrupos()
+	{
+		isLoading = true;
+		StateHasChanged();
+		var result = await _grupoRepository.ObtenerTodosLosGrupos();
+		if (result != null && result.Exito)
+		{
+			ListaDeGrupos = result.Data;
+		}
+		isLoading = false;
+		StateHasChanged();
+	}
+
+	private async Task ObtenerInfo()
+	{
+		isLoading = true;
+		StateHasChanged();
+		var result = await _infoRepository.ObtenerInfo();
+		if (result != null && result.Exito)
+		{
+			Informacion = result.Data;
+			numeroGrabado = Informacion.NumeroIntegrupal;
+		}
+		EditarNumero = false;
+		isLoading = false;
+		StateHasChanged();
+	}
+
+	private async Task HandleDelete(int id)
+	{
+		savedId = id;
+		await _jsRuntime.InvokeVoidAsync("ShowDeleteConfirmation");
+	}
+
+	private async Task ActualizarNumero()
+	{
+		EditarNumero = true;
+	}
+
+	private async Task GrabarNumero()
+	{
+		if (numeroGrabado == Informacion.NumeroIntegrupal)
+		{
+			await _jsRuntime.ToastrSuccess("Numero Ya Esta Grabado.");
+			EditarNumero = false;
+			return;
+		}
+		var resultado = await _infoRepository.CrearEditarInfo(Informacion);
+		if (resultado != null && resultado.Exito)
+		{
+			await _jsRuntime.ToastrSuccess("Numero Grabado Exitosamente.");
+		}
+		else
+		{
+			await _jsRuntime.ToastrError("Numero No Se Pudo Grabar.");
+		}
+		await ObtenerInfo();
+	}
+
+	public async Task DeleteConfirmed(bool confirmed)
+	{
+		isLoading = true;
+		if (confirmed && savedId != 0)
+		{
+			await _grupoRepository.BorrarGrupo(savedId);
+			await _jsRuntime.ToastrSuccess("Grupo Borrado Exitosamente.");
+			await ObtenerGrupos();
+			await _jsRuntime.InvokeVoidAsync("HideDeleteConfirmation");
+		}
+		isLoading = false;
+	}
+}

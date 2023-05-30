@@ -1,0 +1,99 @@
+﻿@page "/"
+
+@inject IInicioService _inicioService
+@inject IInvitacionService _invitacionService
+@inject IJSRuntime _jsRuntime
+
+@******************************************************************@
+@*                          CAMBIOS                               *@
+@*----------------------------------------------------------------*@
+@*                                                                *@
+@******************************************************************@
+
+<PageTitle>Al-Anon El Paso Texas y Sur de Nuevo Mexico</PageTitle>
+<meta name="description" content="Encuentra el directorio y calendario de los grupos de Al-Anon en
+El Paso y Sur de Nuevo Mexico en Español y mucha mas informacion. Todo relacionado con los Grupos de Familia Al-Anon
+En El Paso Texas, Las Cruces y Deming Nuevo Mexico."/>
+
+@if (isLoading)
+{
+	//Loading Symbol.
+	<div class="text-center pt-4">
+		<img src="/Images/loading.gif">
+	</div>
+}
+else
+{
+	@((MarkupString)Inicio.Titulo)
+	@((MarkupString)Inicio.ParrafoPrincipal)
+	<a class="px-0 text-start nav-link btn btn-link" href="/publico/directorio">Directorio de Juntas en El Paso y Sur de Nuevo Mexico</a>
+	@if (ListaDeInvitaciones.Count() > 0)
+	{
+		<div class="col" style="display: flex; justify-content: center;">
+			En esta semana:
+		</div>
+		<div id="carousel-container" style="width: 300px; height: 500px; max-width: 50%; margin: 0 auto; display: flex; justify-content: center;">
+			<MudCarousel Class="mud-width-full" ShowArrows="@arrows" ShowBullets="@bullets" EnableSwipeGesture="@enableSwipeGesture" AutoCycle="true" AutoCycleTime="@CycleTime" TData="object">
+				@foreach (var invitacion in ListaDeInvitaciones)
+				{
+					<MudCarouselItem Transition="transition" Style="max-width: 100%; max-height: 100%;">
+						<div id="item-container">
+							<a data-src="@invitacion.ImagePath" data-fancybox>
+								<img src="@invitacion.ImagePath" alt="@invitacion.Alt" class="text-center" style="display: block; margin: 0 auto; max-width: 100%; max-height: 100%; object-fit: cover;">
+							</a>
+						</div>
+					</MudCarouselItem>
+				}
+			</MudCarousel>
+		</div>
+	}
+}
+
+@code {
+	private InicioDto Inicio = new();
+	private List<InvitacionDto> ListaDeInvitaciones { get; set; } = new List<InvitacionDto>();
+	private bool isLoading { get; set; } = true;
+	DateTimeOffset localTime;
+	private bool arrows = false;
+	private bool bullets = false;
+	private bool enableSwipeGesture = true;
+	private bool autocycle = true;
+	private Transition transition = Transition.Slide;
+	private TimeSpan CycleTime = new TimeSpan(00, 00, 03);
+
+	protected override async Task OnInitializedAsync()
+	{
+		//Only load the categories the first time the page is rendered
+		// Get the timezone offset in minutes using JavaScript
+		int timezoneOffsetInMinutes = await _jsRuntime.InvokeAsync<int>("blazorGetTimezoneOffset");
+		// Create a DateTimeOffset object based on the local timezone offset
+		localTime = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromMinutes(timezoneOffsetInMinutes));
+		await ObtenerInicio();
+		await ObtenerInvitacionesActuales();
+
+	}
+
+	private async Task ObtenerInicio()
+	{
+		isLoading = true;
+
+		var result = await _inicioService.Obtener();
+		if (result != null && result.Exito)
+		{
+			Inicio = result.Data;
+		}
+		isLoading = false;
+	}
+
+	private async Task ObtenerInvitacionesActuales()
+	{
+
+		isLoading = true;
+		var result = await _invitacionService.ObtenerInvitacionesDeLaSemana(localTime.LocalDateTime.ToString("yyyyMMdd"));
+		if (result != null && result.Exito)
+		{
+			ListaDeInvitaciones = result.Data;
+		}
+		isLoading = false;
+	}
+}

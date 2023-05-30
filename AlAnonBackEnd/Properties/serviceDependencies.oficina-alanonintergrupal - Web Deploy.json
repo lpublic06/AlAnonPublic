@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "apis1": {
+      "apiEndpoint": "https://alanonapi.azure-api.net/",
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.ApiManagement/service/AlAnonapi/apis/AlAnon",
+      "type": "apis.azure"
+    },
+    "mssql1": {
+      "secretStore": "AzureAppSettings",
+      "type": "mssql.onprem",
+      "connectionId": "ConnectionStrings:DefaultConnection",
+      "dynamicId": null
+    }
+  }
+}

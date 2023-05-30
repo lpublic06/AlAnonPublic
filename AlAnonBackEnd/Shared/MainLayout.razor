@@ -1,0 +1,62 @@
+﻿@inherits LayoutComponentBase
+@inject IInicioRepository _inicioRepository
+
+<PageTitle>AlAnon</PageTitle>
+<div class="page">
+    <div style="background-image: linear-gradient(135deg, #6B73FF 10%, #000DFF 100%);" class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        @if (!String.IsNullOrEmpty(InicioDto.ImagenDeInicio))
+        {
+            @*			<div style="background-image: url(@InicioDto.ImagenDeInicio);
+        height: 140px;
+        width: 100%;
+        background-size: auto;
+        background-repeat: no-repeat;">
+        </div>*@
+            @*<div style="position:relative; width:100%; height:140px;">
+        <MudImage ObjectFit="@InicioDto.ImageFitLogo" ObjectPosition="@InicioDto.ImagePositionLogo" Height="@InicioDto.ImageHeightLogo" Width="@InicioDto.ImageWidthLogo" style="position:absolute;" Src="@InicioDto.ImagenDeInicioLogo" />
+        <MudImage ObjectFit="@InicioDto.ImageFit" ObjectPosition="@InicioDto.ImagePosition" Height="@InicioDto.ImageHeight" Style="width:100%;" Src="@InicioDto.ImagenDeInicio" />
+        </div>*@
+            <div class="container-fluid w-100 m-0 p-0 d-print-none">
+                <img src="@InicioDto.ImagenDeInicioLogo" class="img-fluid p-0 m-0" style="height:140px; position:absolute; object-fit:@InicioDto.ImageFitLogo; object-position:@InicioDto.ImagePositionLogo">
+                <img src="@InicioDto.ImagenDeInicio" class="img-fluid w-100 p-0 m-0" style="height:140px; object-fit:@InicioDto.ImageFit; object-position:center; object-position:@InicioDto.ImagePosition">
+            </div>
+            <div class="top-row row-lg-4 row-md-6 auth d-print-none">
+                <LoginDisplay />
+            </div>
+        }
+        else
+        {
+            <div class="top-row px-4 auth">
+                <LoginDisplay />
+            </div>
+        }
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@code {
+    private InicioDto InicioDto = new();
+
+    protected override async void OnInitialized()
+    {
+        await ObtenerInicio();
+    }
+
+    private async Task ObtenerInicio()
+    {
+        var result = await _inicioRepository.ObtenerInicio();
+        if (result != null && result.Exito)
+        {
+            InicioDto = result.Data;
+        }
+    }
+}

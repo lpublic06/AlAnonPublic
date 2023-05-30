@@ -1,0 +1,61 @@
+﻿@page "/publico/documentos"
+@inject IDocumentoRepository _documentoRepository
+@inject IJSRuntime _jsRuntime
+@inject IFileService _fileUpload
+
+<h4 class="card-title text-primary">Documentos</h4>
+@if (isLoading)
+{
+    //Loading Symbol
+    <div class="text-center pt-4">
+        <img src="/images/loading.gif">
+    </div>
+}
+else
+{
+    @if (documentos.Count() > 0)
+    {
+        <ul>
+            <label for="picture">Documentos Grabados:    </label>
+            <br />
+            <br />
+            @foreach (var documento in documentos)
+            {
+                <li>
+                    <a href="@documento.DocumentPath">@documento.Nombre    </a>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No hay documentos cargados.</p>
+    }
+}
+@code {
+    private IEnumerable<DocumentoDto> documentos { get; set; } = new List<DocumentoDto>();
+    private bool isLoading { get; set; } = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        //Only load the local time the first time the page is rendered
+        if (firstRender)
+        {
+            await ObtenerDocumentos();
+        }
+
+    }
+
+    private async Task ObtenerDocumentos()
+    {
+        isLoading = true;
+        StateHasChanged();
+        var result = await _documentoRepository.ObtenerDocumentos();
+        if (result != null && result.Exito)
+        {
+            documentos = result.Data;
+        }
+        isLoading = false;
+        StateHasChanged();
+    }
+}

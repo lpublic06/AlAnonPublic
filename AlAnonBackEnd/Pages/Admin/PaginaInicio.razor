@@ -1,0 +1,290 @@
+﻿@page "/ManejarInicio"
+
+@inject IWebHostEnvironment Environment
+
+@inject IInicioRepository _inicioRepository
+@inject IJSRuntime _jsRuntime
+@inject IFileService _fileUpload
+@inject NavigationManager _navigationManager
+@attribute [Authorize(Roles = "Admin")]
+
+<div class="row mt-4">
+    <h4 class="card-title text-primary">Manejar Pagina De Inicio</h4>
+    @if (isLoading)
+    {
+        //Loading Symbol
+        <div class="text-center pt-4">
+            <img src="/images/loading.gif">
+        </div>
+    }
+    else
+    {
+        <EditForm Model="InicioDto" OnValidSubmit="CambiarInicio">
+            <div class="col-lg-4 col-md-6 pb-4">
+                <div class="form-group">
+                    <label>Editar Titulo Principal</label>
+                    <SfRichTextEditor @bind-Value="InicioDto.Titulo">
+                        <RichTextEditorToolbarSettings Items="@Tools" />
+                    </SfRichTextEditor>
+                    <ValidationMessage For="()=>InicioDto.Titulo"></ValidationMessage>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 pb-4">
+                <div class="form-group">
+                    <label>Editar Parrafo Principal</label>
+                    <SfRichTextEditor @bind-Value="InicioDto.ParrafoPrincipal">
+                        <RichTextEditorToolbarSettings Items="@Tools" />
+                    </SfRichTextEditor>
+                    <ValidationMessage For="()=>InicioDto.ParrafoPrincipal"></ValidationMessage>
+                </div>
+            </div>
+            <DataAnnotationsValidator />
+            <label>Editar Imagen Principal</label>
+            <div class="form-group pa-4 col-md-6">
+                <InputFile OnChange="HandleImageUpload"></InputFile>
+            </div>
+
+            <label>Editar Logo Principal</label>
+            <div class="form-group pa-4 col-md-6">
+                <InputFile OnChange="HandleImageUploadLogo"></InputFile>
+            </div>
+
+            <MudGrid Justify="Justify.SpaceEvenly">
+                <MudItem Class="container-fluid w-100 m-0 p-0" xs="12">
+                    <img src="@InicioDto.ImagenDeInicioLogo" class="img-fluid p-0 m-0" style="height:140px; position:absolute; object-fit:@InicioDto.ImageFitLogo; object-position:@InicioDto.ImagePositionLogo">
+                    <img src="@InicioDto.ImagenDeInicio" class="img-fluid w-100 p-0 m-0" style="height:140px; object-fit:@InicioDto.ImageFit; object-position:center; object-position:@InicioDto.ImagePosition">
+                    @*<MudImage ObjectFit="@InicioDto.ImageFit" ObjectPosition="@InicioDto.ImagePosition" Height="@(SetHeight ? @InicioDto.ImageHeight : null)" Style="width:100%;" Src="@InicioDto.ImagenDeInicio" />
+                <MudImage ObjectFit="@InicioDto.ImageFitLogo" ObjectPosition="@InicioDto.ImagePositionLogo" Height="@(SetHeightLogo ? @InicioDto.ImageHeightLogo : null)" Width="@(SetWidthLogo ? @InicioDto.ImageWidthLogo : null)" style="position:absolute;" Src="@InicioDto.ImagenDeInicioLogo" />*@
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="col-md-12 py-8" Elevation="0">
+                        <MudText Typo="Typo.h6">Opciones de Foto Principal</MudText>
+                        <MudSelect Label="Stylo" AnchorOrigin="Origin.BottomCenter" Dense="true" Margin="Margin.Dense" @bind-Value="@InicioDto.ImageFit" Class="mt-4">
+                            <MudSelectItem T="ObjectFit" Value="ObjectFit.None">None</MudSelectItem>
+                            <MudSelectItem T="ObjectFit" Value="ObjectFit.Cover">Cover</MudSelectItem>
+                            <MudSelectItem T="ObjectFit" Value="ObjectFit.Contain">Contain</MudSelectItem>
+                            <MudSelectItem T="ObjectFit" Value="ObjectFit.Fill">Fill</MudSelectItem>
+                            <MudSelectItem T="ObjectFit" Value="ObjectFit.ScaleDown">ScaleDown</MudSelectItem>
+                        </MudSelect>
+                        <MudSelect Label="Posicion" AnchorOrigin="Origin.BottomCenter" Dense="true" Margin="Margin.Dense" @bind-Value="@InicioDto.ImagePosition" Class="mt-4">
+                            <MudSelectItem T="ObjectPosition" Value="ObjectPosition.Center">Center</MudSelectItem>
+                            <MudSelectItem T="ObjectPosition" Value="ObjectPosition.Top">Top</MudSelectItem>
+                            <MudSelectItem T="ObjectPosition" Value="ObjectPosition.Bottom">Bottom</MudSelectItem>
+                            <MudSelectItem T="ObjectPosition" Value="ObjectPosition.Left">Left</MudSelectItem>
+                            <MudSelectItem T="ObjectPosition" Value="ObjectPosition.LeftTop">LeftTop</MudSelectItem>
+                            <MudSelectItem T="ObjectPosition" Value="ObjectPosition.LeftBottom">LeftBottom</MudSelectItem>
+                            <MudSelectItem T="ObjectPosition" Value="ObjectPosition.Right">Right</MudSelectItem>
+                            <MudSelectItem T="ObjectPosition" Value="ObjectPosition.RightTop">RightTop</MudSelectItem>
+                            <MudSelectItem T="ObjectPosition" Value="ObjectPosition.RightBottom">RightBottom</MudSelectItem>
+                        </MudSelect>
+                        @*<div class="d-flex justify-space-between align-center">
+                            <MudText>Height: @(SetHeight ? $"{@InicioDto.ImageHeight}px" : "Auto")</MudText>
+                                <MudSwitch @bind-Checked="@SetHeight" Color="Color.Secondary" Class="mr-0" />
+                            </div>
+                            <MudSlider @bind-Value="@InicioDto.ImageHeight" Disabled="@(!SetHeight)" Max="140" Color="Color.Secondary" />*@
+                    </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="col-md-12" Elevation="0">
+                            <MudText Typo="Typo.h6">Opciones de Logo Principal</MudText>
+                            <MudSelect Label="Stylo" AnchorOrigin="Origin.BottomCenter" Dense="true" Margin="Margin.Dense" @bind-Value="@InicioDto.ImageFitLogo" Class="mt-4">
+                                <MudSelectItem T="ObjectFit" Value="ObjectFit.None">None</MudSelectItem>
+                                <MudSelectItem T="ObjectFit" Value="ObjectFit.Cover">Cover</MudSelectItem>
+                                <MudSelectItem T="ObjectFit" Value="ObjectFit.Contain">Contain</MudSelectItem>
+                                <MudSelectItem T="ObjectFit" Value="ObjectFit.Fill">Fill</MudSelectItem>
+                                <MudSelectItem T="ObjectFit" Value="ObjectFit.ScaleDown">ScaleDown</MudSelectItem>
+                            </MudSelect>
+                            <MudSelect Label="Posicion" AnchorOrigin="Origin.BottomCenter" Dense="true" Margin="Margin.Dense" @bind-Value="@InicioDto.ImagePositionLogo" Class="mt-4">
+                                <MudSelectItem T="ObjectPosition" Value="ObjectPosition.Center">Center</MudSelectItem>
+                                <MudSelectItem T="ObjectPosition" Value="ObjectPosition.Top">Top</MudSelectItem>
+                                <MudSelectItem T="ObjectPosition" Value="ObjectPosition.Bottom">Bottom</MudSelectItem>
+                                <MudSelectItem T="ObjectPosition" Value="ObjectPosition.Left">Left</MudSelectItem>
+                                <MudSelectItem T="ObjectPosition" Value="ObjectPosition.LeftTop">LeftTop</MudSelectItem>
+                                <MudSelectItem T="ObjectPosition" Value="ObjectPosition.LeftBottom">LeftBottom</MudSelectItem>
+                                <MudSelectItem T="ObjectPosition" Value="ObjectPosition.Right">Right</MudSelectItem>
+                                <MudSelectItem T="ObjectPosition" Value="ObjectPosition.RightTop">RightTop</MudSelectItem>
+                                <MudSelectItem T="ObjectPosition" Value="ObjectPosition.RightBottom">RightBottom</MudSelectItem>
+                            </MudSelect>
+                            @*<div class="d-flex justify-space-between align-center">
+                                <MudText>Width: @(SetWidthLogo ? $"{@InicioDto.ImageWidthLogo}px" : "Auto")</MudText>
+                                <MudSwitch @bind-Checked="@SetWidth" Color="Color.Primary" Class="mr-0" />
+                            </div>
+                            <MudSlider @bind-Value="@InicioDto.ImageWidthLogo" Disabled="@(!SetWidthLogo)" Max="2000" Color="Color.Primary" />
+                            <div class="d-flex justify-space-between align-center">
+                                <MudText>Height: @(SetHeightLogo ? $"{@InicioDto.ImageHeightLogo}px" : "Auto")</MudText>
+                                <MudSwitch @bind-Checked="@SetHeightLogo" Color="Color.Secondary" Class="mr-0" />
+                            </div>
+                            <MudSlider @bind-Value="@InicioDto.ImageHeightLogo" Disabled="@(!SetHeightLogo)" Max="140" Color="Color.Secondary" />*@
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+                <MudButton Variant="Variant.Filled" OnClick="(() => CambiarInicio())" StartIcon="@Icons.Material.Filled.Save" IconColor="Color.Secondary" Size="Size.Large">Grabar</MudButton>
+            </EditForm>
+    }
+</div>
+
+@code {
+    private bool isLoading { get; set; } = false;
+    private InicioDto InicioDto = new();
+    private InicioDto InicioDtoGrabado = new();
+    private string Titulo = String.Empty;
+    private IBrowserFile rawFile { get; set; }
+    private IBrowserFile rawFileLogo { get; set; }
+    private List<IBrowserFile> loadedFiles = new();
+    private int maxAllowedFiles = 1;
+    private long maxFileSize = 4000 * 4000;
+    public bool SetHeight { get; set; } = true;
+    public bool SetWidth { get; set; } = true;
+    public bool SetHeightLogo { get; set; } = true;
+    public bool SetWidthLogo { get; set; } = true;
+    public string path = String.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        //Only load the categories the first time the page is rendered
+        if (firstRender)
+        {
+            await ObtenerInicio();
+        }
+    }
+
+    private async Task ObtenerInicio()
+    {
+        isLoading = true;
+        StateHasChanged();
+        var result = await _inicioRepository.ObtenerInicio();
+        if (result != null && result.Exito)
+        {
+            InicioDto = result.Data;
+            // Grabar la imagen para ver si cambio
+            InicioDtoGrabado.ImagenDeInicio = InicioDto.ImagenDeInicio;
+            InicioDtoGrabado.ImagenDeInicioLogo = InicioDto.ImagenDeInicioLogo;
+        }
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task CambiarInicio()
+    {
+
+        if (InicioDtoGrabado.ImagenDeInicio != InicioDto.ImagenDeInicio)
+        {
+            InicioDto.ImagenDeInicio = await _fileUpload.UploadFile(rawFile);
+        }
+
+        if (InicioDtoGrabado.ImagenDeInicioLogo != InicioDto.ImagenDeInicioLogo)
+        {
+            InicioDto.ImagenDeInicioLogo = await _fileUpload.UploadFile(rawFileLogo);
+        }
+
+        var resultado = await _inicioRepository.CrearEditarInicio(InicioDto);
+        if (resultado != null && resultado.Exito)
+        {
+            await _jsRuntime.ToastrSuccess("Inicio Grabado Exitosamente.");
+        }
+        else
+        {
+            await _jsRuntime.ToastrError("Inicio No Se Pudo Grabar.");
+        }
+        await ObtenerInicio();
+        _navigationManager.NavigateTo("/ManejarInicio", true);
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        //       isLoading = true;
+        rawFile = e.File;
+
+        try
+        {
+            if (rawFile != null)
+            {
+                System.IO.FileInfo fileInfo = new System.IO.FileInfo(rawFile.Name);
+                if (fileInfo.Extension.ToLower() == ".jpg" ||
+                fileInfo.Extension.ToLower() == ".png" ||
+                fileInfo.Extension.ToLower() == ".jpeg")
+                {
+                    path = Path.Combine(Environment.WebRootPath,
+                            "Images",
+                                $"ImagenDeInicio{fileInfo.Extension.ToLower()}");
+
+                    await using FileStream fs = new(path, FileMode.Create);
+                    await rawFile.OpenReadStream().CopyToAsync(fs);
+                    fs.Position = 0;
+                    byte[] buf = new byte[fs.Length];
+                    fs.Read(buf, 0, buf.Length);
+                    //selectedImage = rawFile.RequestImageFileAsync(rawFile.ContentType, 1024, 140);
+
+                    InicioDto.ImagenDeInicio = $"data:{rawFile.ContentType};base64,{Convert.ToBase64String(buf.ToArray())}";
+                }
+                else
+                {
+                    await _jsRuntime.ToastrError("Porfavor escojer una foto de tipo .jpg/.jpeg/.png file only");
+                }
+                isLoading = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            await _jsRuntime.ToastrError(ex.Message);
+        }
+    }
+
+    private async Task HandleImageUploadLogo(InputFileChangeEventArgs e)
+    {
+        rawFileLogo = e.File;
+
+        try
+        {
+            if (rawFileLogo != null)
+            {
+                System.IO.FileInfo fileInfo = new System.IO.FileInfo(rawFileLogo.Name);
+                if (fileInfo.Extension.ToLower() == ".jpg" ||
+                fileInfo.Extension.ToLower() == ".png" ||
+                fileInfo.Extension.ToLower() == ".jpeg")
+                {
+                    path = Path.Combine(Environment.WebRootPath,
+                            "Images",
+                                $"LogoDeInicio{fileInfo.Extension.ToLower()}");
+
+                    await using FileStream fs = new(path, FileMode.Create);
+                    await rawFileLogo.OpenReadStream().CopyToAsync(fs);
+                    fs.Position = 0;
+                    byte[] buf = new byte[fs.Length];
+                    fs.Read(buf, 0, buf.Length);
+                    //selectedImage = rawFile.RequestImageFileAsync(rawFile.ContentType, 1024, 140);
+
+                    InicioDto.ImagenDeInicioLogo = $"data:{rawFileLogo.ContentType};base64,{Convert.ToBase64String(buf.ToArray())}";
+                }
+                else
+                {
+                    await _jsRuntime.ToastrError("Porfavor escojer una foto de tipo .jpg/.jpeg/.png file only");
+                }
+                isLoading = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            await _jsRuntime.ToastrError(ex.Message);
+        }
+    }
+    private List<ToolbarItemModel>
+    Tools = new List<ToolbarItemModel>
+        ()
+                    {
+        new ToolbarItemModel() { Command = ToolbarCommand.Bold },
+        new ToolbarItemModel() { Command = ToolbarCommand.Italic },
+        new ToolbarItemModel() { Command = ToolbarCommand.Underline },
+        new ToolbarItemModel() { Command = ToolbarCommand.StrikeThrough },
+        new ToolbarItemModel() { Command = ToolbarCommand.FontName },
+        new ToolbarItemModel() { Command = ToolbarCommand.FontSize },
+        new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+        new ToolbarItemModel() { Command = ToolbarCommand.FontColor },
+        new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+        new ToolbarItemModel() { Command = ToolbarCommand.Formats },
+        new ToolbarItemModel() { Command = ToolbarCommand.Alignments },
+        new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+        new ToolbarItemModel() { Command = ToolbarCommand.Undo },
+        new ToolbarItemModel() { Command = ToolbarCommand.Redo }
+                    };
+}

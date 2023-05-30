@@ -1,0 +1,158 @@
+﻿@page "/usuarios"
+
+@inject IUsuarioRepository _usuarioRepository
+@inject IJSRuntime _jsRuntime
+@*@attribute [Authorize(Roles = "Admins")]*@
+
+<div class="row mt-4">
+	<h4 class="card-title text-primary">Manejar Usuarios</h4>
+	@if (isLoading)
+	{
+		//Loading Symbol
+		<div class="text-center pt-4">
+			<img src="/images/loading.gif">
+		</div>
+	}
+	else
+	{
+		@*Select a user and bind it to UsuarioSeleccionado then call SeSeleccionoUnUsuario to handle Usuario Info*@
+		<div class="form-group col-8">
+			<select class="custom-select" @onchange="SeSeleccionoUnUsuario" title="Escojer Usuario">
+				<option value="@(String.IsNullOrEmpty(UsuarioSeleccionado)?"": UsuarioSeleccionado)" disabled selected>@(String.IsNullOrEmpty(UsuarioSeleccionado)? "Seleccionar Usario": UsuarioSeleccionado)</option>
+				@foreach (var usuario in ListaDeUsuarios.Select(u => u.Nombre))
+				{
+					<option value="@usuario"> @usuario</option>
+				}
+			</select>
+		</div>
+
+		@if (!String.IsNullOrEmpty(UsuarioSeleccionado))
+		{
+			<div class="container m-0">
+				<div class="row pt-4 backgroundWhite">
+					<div class="col-lg-4 col-md-6 pb-4 filter">
+						<div class="card border border-info shadow-0 mb-3">
+							<div class="card-header" style="background-color: #000DFF; color:white;">@Usuario.Nombre</div>
+							<div class="card-body">
+								@*h5 class="card-title">Info card title</h5>*@
+								<div class="row">
+									<div class="col-4" style="font-weight:bold;">Email:</div>
+									<div class="col" style="direction: rtl;">@Usuario.Email</div>
+								</div>
+								<div class="row">
+									@*<div class="col-xs-4 hidden-sm hidden-md hidden-lg">Direccion</div>*@
+									<div class="col-4" style="font-weight:bold;">Grupo:</div>
+									<div class="col" style="direction: rtl;">@Usuario.Grupo</div>
+								</div>
+								<div class="row">
+									<div class="col" style="font-weight:bold;">Tel:</div>
+									<div class="col" style="direction: rtl;">@Usuario.PhoneNumber</div>
+								</div>
+								<div class="row">
+									<div class="col-4" style="font-weight:bold;">Usuario:</div>
+									<div class="col" style="direction: rtl;">@Usuario.UserName</div>
+								</div>
+								<div class="row">
+									<div class="col" style="font-weight:bold;">Puede Manejar?:</div>
+									<div class="col" style="direction: rtl;">@(Usuario.Roles.Contains(SD.Admin)? "Si": "No")</div>
+								</div>
+							</div>
+							<div class="card-footer">
+								@*Footer*@
+								<div class="row">
+									<div class="col">
+										Puede Manejar: <input type="checkbox" @onchange="DarOQuitarPermiso" checked="@(Usuario.Roles.Contains(SD.Admin)? "checked":null)" />
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		}
+		else
+		{
+			//no records
+			<p>Porfavor de escojer a un usuario de la lista de usuarios.</p>
+		}
+	}
+</div>
+@code {
+	private bool isLoading { get; set; } = true;
+	public UsuarioDto Usuario { get; set; } = new();
+	public bool Manejador { get; set; }
+	public List<UsuarioDto> ListaDeUsuarios { get; set; } = new();
+	private string UsuarioSeleccionado { get; set; } = String.Empty;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		//Only load the categories the first time the page is rendered
+		if (firstRender)
+		{
+			await ObternerUsuarios();
+		}
+	}
+
+	private async Task ObternerUsuarios()
+	{
+		isLoading = true;
+		StateHasChanged();
+		var result = await _usuarioRepository.ObtenerUsuarios();
+		if (result != null && result.Exito)
+		{
+			ListaDeUsuarios = result.Data;
+		}
+		isLoading = false;
+		StateHasChanged();
+	}
+
+	private async Task SeSeleccionoUnUsuario(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+	{
+		UsuarioSeleccionado = e.Value.ToString();
+
+		isLoading = true;
+		StateHasChanged();
+		if (Usuario.Nombre != UsuarioSeleccionado)
+		{
+			Usuario = ListaDeUsuarios.Find(u => u.Nombre == UsuarioSeleccionado);
+		}
+		isLoading = false;
+		StateHasChanged();
+
+	}
+
+	private async Task DarOQuitarPermiso(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+	{
+		//var conPermiso = e.Value;
+
+		isLoading = true;
+		StateHasChanged();
+		if (!Usuario.Roles.Contains(SD.Admin))
+		{
+			var result = await _usuarioRepository.DarPermiso(Usuario.Id, SD.Admin);
+			if (result != null && result.Exito)
+			{
+				Usuario = result.Data;
+			}
+			else
+			{
+				throw new (result.Error);
+			}
+		}
+		else
+		{
+			var result = await _usuarioRepository.QuitarPermiso(Usuario.Id, SD.Admin);
+			if (result != null && result.Exito)
+			{
+				Usuario = result.Data;
+			}
+			else
+			{
+				throw new (result.Error);
+			}
+		}
+		isLoading = false;
+		StateHasChanged();
+
+	}
+}

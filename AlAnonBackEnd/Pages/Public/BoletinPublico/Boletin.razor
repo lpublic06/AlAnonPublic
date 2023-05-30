@@ -1,0 +1,61 @@
+﻿@page "/publico/boletin"
+@inject IBoletinRepository _boletinRepository
+@inject IJSRuntime _jsRuntime
+
+@if (isLoading)
+{
+	//Loading Symbol
+	<div class="text-center pt-4">
+		<img src="/images/loading.gif">
+	</div>
+}
+else{
+	<div class="container">
+		<div class="row">
+			<div class="col-lg-6">
+				<div class="card">
+					<div class="card-body">
+						<p class="card-text text-auto-adjust">
+							@((MarkupString)BoletinDto.Pagina1)
+						</p>
+					</div>
+				</div>
+			</div>
+			<div class="col-lg-6">
+				<div class="card">
+					<div class="card-body">
+						<p class="card-text text-auto-adjust">
+							@((MarkupString)BoletinDto.Pagina2)
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+@code {
+	private bool isLoading { get; set; } = false;
+	private BoletinDto BoletinDto { get; set; } = new();
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		//Only load the categories the first time the page is rendered
+		if (firstRender)
+		{
+			await ObtenerBoletin();
+		}
+	}
+
+	private async Task ObtenerBoletin()
+	{
+		isLoading = true;
+		StateHasChanged();
+		var result = await _boletinRepository.ObtenerBoletin();
+		if (result != null && result.Exito)
+		{
+			BoletinDto = result.Data;
+		}
+		isLoading = false;
+		StateHasChanged();
+	}
+}
